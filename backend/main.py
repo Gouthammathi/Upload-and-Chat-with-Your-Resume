@@ -6,33 +6,54 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 from dotenv import load_dotenv
-import os, tempfile, openai
+import tempfile, os, re, openai
 
-# ✅ Load .env with TOGETHER_API_KEY
+# Load .env with TOGETHER_API_KEY
 load_dotenv()
 openai.api_key = os.getenv("TOGETHER_API_KEY")
 openai.api_base = "https://api.together.xyz/v1"
 
-# 🚀 FastAPI app instance
 app = FastAPI()
 
-# 🔐 Allow CORS (adjust origin for your frontend domain)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000"],  # Change if deployed
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# 📦 ChromaDB setup
 VECTOR_DB_PATH = "chroma_store"
 vectorstore = None
+user_info = {}
 
 
 @app.get("/")
 def root():
-    return {"message": "🧠 Resume Chat API is running!"}
+    return {"message": "🚀 Resume Chat API is running"}
+
+
+# 🔍 Extract name, email, phone using regex
+def extract_personal_info(text: str):
+    info = {
+        "name": None,
+        "email": None,
+        "phone": None,
+    }
+
+    lines = text.strip().split("\n")
+    if lines:
+        info["name"] = lines[0].strip()
+
+    email_match = re.search(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", text)
+    if email_match:
+        info["email"] = email_match.group()
+
+    phone_match = re.search(r"(\+?\d[\d\-\s]{8,}\d)", text)
+    if phone_match:
+        info["phone"] = phone_match.group()
+
+    return info
 
 
 @app.post("/upload")
@@ -45,6 +66,12 @@ async def upload_pdf(file: UploadFile = File(...)):
         loader = PyPDFLoader(tmp_path)
         documents = loader.load()
 
+        # Extract raw text
+        resume_text = "\n".join([doc.page_content for doc in documents])
+        global user_info
+        user_info = extract_personal_info(resume_text)
+
+        # Split & embed
         splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
         chunks = splitter.split_documents(documents)
 
@@ -57,10 +84,16 @@ async def upload_pdf(file: UploadFile = File(...)):
         vectorstore = Chroma.from_documents(chunks, embedding, persist_directory=VECTOR_DB_PATH)
 
         os.remove(tmp_path)
-        return {"message": "✅ Resume uploaded and indexed successfully."}
+
+        # Personalized greeting
+        greeting = "👋 Hello"
+        if user_info.get("name"):
+            greeting += f" {user_info['name']}"
+        greeting += "! How may I assist you with your resume today?"
+
+        return {"message": greeting}
 
     except Exception as e:
-        print("[/upload error]", e)
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
@@ -71,8 +104,24 @@ async def chat(request: Request):
         question = body.get("message", "").strip()
 
         if not question:
-            return JSONResponse(status_code=400, content={"error": "Question is required."})
+            return JSONResponse(status_code=400, content={"error": "Message required."})
 
+        question_lower = question.lower()
+
+        # Handle personal info directly
+        if "your name" in question_lower or "my name" in question_lower:
+            if user_info.get("name"):
+                return StreamingResponse(iter([f"data: Your name is {user_info['name']}\n\n"]), media_type="text/event-stream")
+
+        if "email" in question_lower or "mail" in question_lower:
+            if user_info.get("email"):
+                return StreamingResponse(iter([f"data: Your email is {user_info['email']}\n\n"]), media_type="text/event-stream")
+
+        if "phone" in question_lower or "mobile" in question_lower:
+            if user_info.get("phone"):
+                return StreamingResponse(iter([f"data: Your phone number is {user_info['phone']}\n\n"]), media_type="text/event-stream")
+
+        # Otherwise use RAG
         global vectorstore
         if vectorstore is None:
             embedding = HuggingFaceEmbeddings(
@@ -85,8 +134,7 @@ async def chat(request: Request):
         docs = retriever.get_relevant_documents(question)
         context = "\n\n".join([doc.page_content for doc in docs[:2]])
 
-        # 🧠 Construct prompt for Mistral
-        prompt = f"[INST] Use the following resume to answer the question.\n\n{context}\n\nQuestion: {question} [/INST]"
+        prompt = f"[INST] Use the following resume content to answer the question.\n\n{context}\n\nQuestion: {question} [/INST]"
 
         def stream():
             try:

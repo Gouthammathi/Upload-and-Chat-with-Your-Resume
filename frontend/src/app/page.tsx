@@ -21,7 +21,6 @@ export default function Home() {
   })
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-
   useEffect(() => { scrollToBottom() }, [messages])
 
   const handleUpload = async () => {
@@ -31,11 +30,14 @@ export default function Home() {
     formData.append('file', file)
 
     try {
-      await axios.post('http://localhost:8000/upload', formData, {
+      const response = await axios.post('http://localhost:8000/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
+
+      const greeting = response.data?.message || '✅ Resume uploaded! Ask me anything about it.'
       setUploaded(true)
-      setMessages([{ role: 'assistant', content: '✅ Resume uploaded! Ask me anything about it.' }])
+      setMessages([{ role: 'assistant', content: greeting }])
+
     } catch {
       setMessages([{ role: 'assistant', content: '❌ Upload failed. Please try again.' }])
     } finally {
@@ -67,18 +69,23 @@ export default function Home() {
       while (true) {
         const { done, value } = await reader!.read()
         if (done) break
+
         const chunk = decoder.decode(value)
         const lines = chunk.split('\n').filter(Boolean)
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             const text = line.replace('data: ', '')
-            assistantMessage += text
-            setMessages(prev => {
-              const updated = [...prev]
-              updated[updated.length - 1].content = assistantMessage
-              return updated
-            })
+
+            for (const char of text) {
+              assistantMessage += char
+              await new Promise(res => setTimeout(res, 8)) // ⏱ Typewriter effect
+              setMessages(prev => {
+                const updated = [...prev]
+                updated[updated.length - 1].content = assistantMessage
+                return updated
+              })
+            }
           }
         }
       }
