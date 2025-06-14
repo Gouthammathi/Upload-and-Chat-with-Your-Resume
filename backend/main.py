@@ -5,10 +5,11 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
+from pydantic import BaseModel
 from dotenv import load_dotenv
 import tempfile, os, re, openai
 
-# Load .env with TOGETHER_API_KEY
+# Load API key
 load_dotenv()
 openai.api_key = os.getenv("TOGETHER_API_KEY")
 openai.api_base = "https://api.together.xyz/v1"
@@ -17,7 +18,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Change if deployed
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,13 +28,11 @@ VECTOR_DB_PATH = "chroma_store"
 vectorstore = None
 user_info = {}
 
-
 @app.get("/")
 def root():
     return {"message": "🚀 Resume Chat API is running"}
 
-
-# 🔍 Extract name, email, phone using regex
+# Extract name/email/phone
 def extract_personal_info(text: str):
     info = {
         "name": None,
@@ -55,7 +54,6 @@ def extract_personal_info(text: str):
 
     return info
 
-
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
     try:
@@ -66,12 +64,10 @@ async def upload_pdf(file: UploadFile = File(...)):
         loader = PyPDFLoader(tmp_path)
         documents = loader.load()
 
-        # Extract raw text
         resume_text = "\n".join([doc.page_content for doc in documents])
         global user_info
         user_info = extract_personal_info(resume_text)
 
-        # Split & embed
         splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
         chunks = splitter.split_documents(documents)
 
@@ -85,7 +81,6 @@ async def upload_pdf(file: UploadFile = File(...)):
 
         os.remove(tmp_path)
 
-        # Personalized greeting
         greeting = "👋 Hello"
         if user_info.get("name"):
             greeting += f" {user_info['name']}"
@@ -95,7 +90,6 @@ async def upload_pdf(file: UploadFile = File(...)):
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
-
 
 @app.post("/chat")
 async def chat(request: Request):
@@ -108,7 +102,6 @@ async def chat(request: Request):
 
         question_lower = question.lower()
 
-        # Handle personal info directly
         if "your name" in question_lower or "my name" in question_lower:
             if user_info.get("name"):
                 return StreamingResponse(iter([f"data: Your name is {user_info['name']}\n\n"]), media_type="text/event-stream")
@@ -121,7 +114,6 @@ async def chat(request: Request):
             if user_info.get("phone"):
                 return StreamingResponse(iter([f"data: Your phone number is {user_info['phone']}\n\n"]), media_type="text/event-stream")
 
-        # Otherwise use RAG
         global vectorstore
         if vectorstore is None:
             embedding = HuggingFaceEmbeddings(
@@ -157,4 +149,49 @@ async def chat(request: Request):
 
     except Exception as e:
         print("[/chat error]", e)
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+# Role-fit score logic
+class ScoreRequest(BaseModel):
+    job_description: str
+
+@app.post("/score")
+async def score_fit(payload: ScoreRequest):
+    try:
+        job_description = payload.job_description.strip()
+        if not job_description:
+            return JSONResponse(status_code=400, content={"error": "Job description required."})
+
+        global vectorstore
+        if not vectorstore:
+            return JSONResponse(status_code=500, content={"error": "Resume not uploaded yet."})
+        docs = vectorstore.similarity_search(job_description, k=5)
+        resume_text = "\n\n".join([doc.page_content for doc in docs])
+
+        prompt = f"""
+You are an AI resume scoring assistant. Given the job description and resume content below, give a match score (0 to 100) for how well the resume fits the job.
+
+Resume:
+{resume_text}
+
+Job Description:
+{job_description}
+
+Respond only with a number between 0 and 100.
+"""
+
+        response = openai.ChatCompletion.create(
+            model="mistralai/Mistral-7B-Instruct-v0.2",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=10,
+            temperature=0.2
+        )
+
+        score_text = response.choices[0].message["content"]
+        score = int(re.search(r"\d{1,3}", score_text).group())
+        score = min(max(score, 0), 100)
+        return {"score": score}
+
+    except Exception as e:
+        print("[score error]", e)
         return JSONResponse(status_code=500, content={"error": str(e)})

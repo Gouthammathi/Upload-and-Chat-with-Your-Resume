@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import axios from 'axios'
-import { FiUpload, FiSend, FiSun, FiMoon, FiDownload } from 'react-icons/fi'
+import { FiUpload, FiSend, FiSun, FiMoon, FiDownload, FiTrendingUp } from 'react-icons/fi'
 import { useDropzone } from 'react-dropzone'
 import toast, { Toaster } from 'react-hot-toast'
 
@@ -14,6 +14,8 @@ export default function Home() {
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [dark, setDark] = useState(false)
+  const [score, setScore] = useState<number | null>(null)
+  const [jobDesc, setJobDesc] = useState<string>('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -34,7 +36,13 @@ export default function Home() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { 'application/pdf': ['.pdf'] },
     maxFiles: 1,
-    onDrop: accepted => setFile(accepted[0])
+    onDrop: accepted => {
+      if (!accepted[0]?.type.includes('pdf')) {
+        toast.error('❌ Please upload a PDF file.')
+        return
+      }
+      setFile(accepted[0])
+    }
   })
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -54,6 +62,8 @@ export default function Home() {
       const greeting = response.data?.message || '✅ Resume uploaded! Ask me anything about it.'
       setUploaded(true)
       setMessages([{ role: 'assistant', content: greeting }])
+      setScore(null)
+
     } catch {
       setMessages([{ role: 'assistant', content: '❌ Upload failed. Please try again.' }])
     } finally {
@@ -111,7 +121,7 @@ export default function Home() {
     }
   }
 
-  const downloadChat = (messages: { role: 'user' | 'assistant', content: string }[]) => {
+  const downloadChat = () => {
     const content = messages.map(m => `${m.role === 'user' ? '🧑 You' : '🤖 Assistant'}:\n${m.content}\n\n`).join('')
     const blob = new Blob([content], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
@@ -122,6 +132,21 @@ export default function Home() {
     link.click()
     document.body.removeChild(link)
     toast.success('✅ Chat downloaded successfully!')
+  }
+
+  const handleRoleFitCheck = async () => {
+    if (!jobDesc.trim()) {
+      toast.error('📝 Please enter a job description first.')
+      return
+    }
+    try {
+      const res = await axios.post('http://localhost:8000/score', { job_description: jobDesc })
+      const { score } = res.data
+      setScore(score)
+      toast.success(`🎯 Role-fit Score: ${score}%`)
+    } catch {
+      toast.error('⚠️ Failed to calculate role-fit score.')
+    }
   }
 
   return (
@@ -196,13 +221,34 @@ export default function Home() {
             </button>
             <button
               type="button"
-              onClick={() => downloadChat(messages)}
+              onClick={downloadChat}
               disabled={messages.length === 0}
               className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 disabled:opacity-50"
             >
               <FiDownload className="text-xl" />
             </button>
+            <button
+              type="button"
+              onClick={handleRoleFitCheck}
+              className="bg-yellow-500 text-white px-4 py-2 rounded-xl hover:bg-yellow-600"
+            >
+              <FiTrendingUp className="text-xl" />
+            </button>
           </form>
+
+          {score !== null && (
+            <div className="text-center mt-3 text-sm text-yellow-500">
+              🎯 Role-fit score: <strong>{score}%</strong>
+            </div>
+          )}
+
+          <textarea
+            value={jobDesc}
+            onChange={e => setJobDesc(e.target.value)}
+            rows={3}
+            placeholder="Paste the job description here for better scoring..."
+            className="mt-4 w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-sm text-gray-800 dark:text-gray-100 p-3"
+          />
         </section>
       </div>
     </main>
