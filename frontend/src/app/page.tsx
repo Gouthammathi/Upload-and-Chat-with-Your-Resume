@@ -5,6 +5,7 @@ import axios from 'axios'
 import { FiUpload, FiSend, FiSun, FiMoon, FiDownload, FiTrendingUp } from 'react-icons/fi'
 import { useDropzone } from 'react-dropzone'
 import toast, { Toaster } from 'react-hot-toast'
+import { BsRobot, BsPerson } from 'react-icons/bs'
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null)
@@ -63,7 +64,6 @@ export default function Home() {
       setUploaded(true)
       setMessages([{ role: 'assistant', content: greeting }])
       setScore(null)
-
     } catch {
       setMessages([{ role: 'assistant', content: '❌ Upload failed. Please try again.' }])
     } finally {
@@ -136,7 +136,7 @@ export default function Home() {
 
   const handleRoleFitCheck = async () => {
     if (!jobDesc.trim()) {
-      toast.error('📝 Please enter a job description first.')
+      toast.error(' Please enter a job description first📝')
       return
     }
     try {
@@ -155,13 +155,7 @@ export default function Home() {
       <div className="max-w-4xl mx-auto relative">
         <h1 className="text-4xl font-bold text-center mb-10">Resume Chat Assistant</h1>
 
-        <button
-          className="absolute top-4 right-4 p-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100"
-          onClick={toggleDarkMode}
-          aria-label="Toggle dark mode"
-        >
-          {dark ? <FiSun className="text-xl" /> : <FiMoon className="text-xl" />}
-        </button>
+        
 
         {!uploaded && (
           <section className="mb-10">
@@ -192,7 +186,9 @@ export default function Home() {
         <section className="bg-white dark:bg-gray-800 shadow-2xl rounded-2xl p-6 h-[600px] flex flex-col border border-gray-100 dark:border-gray-700">
           <div className="flex-1 overflow-y-auto space-y-4 pr-2">
             {messages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div key={i} className={`flex items-start gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {msg.role === 'assistant' && <BsRobot className="text-2xl text-blue-500" title="Assistant" />}
+                {msg.role === 'user' && <BsPerson className="text-2xl text-gray-400" title="You" />}
                 <div className={`rounded-xl px-4 py-3 max-w-[80%] text-sm shadow ${
                   msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100'
                 }`}>
@@ -216,6 +212,7 @@ export default function Home() {
               type="submit"
               disabled={!input.trim() || isStreaming}
               className="bg-blue-600 text-white px-5 py-2 rounded-xl hover:bg-blue-700 disabled:opacity-50"
+              title="Send message"
             >
               <FiSend className="text-xl" />
             </button>
@@ -224,6 +221,7 @@ export default function Home() {
               onClick={downloadChat}
               disabled={messages.length === 0}
               className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 disabled:opacity-50"
+              title="Download chat"
             >
               <FiDownload className="text-xl" />
             </button>
@@ -231,6 +229,7 @@ export default function Home() {
               type="button"
               onClick={handleRoleFitCheck}
               className="bg-yellow-500 text-white px-4 py-2 rounded-xl hover:bg-yellow-600"
+              title="Check role-fit score"
             >
               <FiTrendingUp className="text-xl" />
             </button>
