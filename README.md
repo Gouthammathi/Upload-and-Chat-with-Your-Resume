@@ -2,7 +2,6 @@
 
 An AI-powered résumé assistant that lets users upload a PDF resume, chat with it, and assess how well it matches a job description.
 
-![App Screenshot](https://via.placeholder.com/1200x600?text=Resume+Chat+App)
 
 ---
 
@@ -95,7 +94,7 @@ By default, frontend runs on `http://localhost:3000` and backend on `http://loca
 
 ## 🎥 Walk-through
 
-> [📹 Loom Walkthrough](https://www.loom.com/) ← Replace with your recording
+> [📹 Loom Walkthrough](https://www.loom.com/share/12d2e4dcf95e4e86a06050480ffee112?sid=15005e6e-bad6-40b6-b97e-913c44aa73aa) ← Replace with your recording
 
 ---
 
@@ -122,5 +121,5 @@ By default, frontend runs on `http://localhost:3000` and backend on `http://loca
 
 ## 📬 Contact
 
-Made with ❤️ by [Your Name](https://github.com/yourusername)  
-📧 you@example.com
+Made with ❤️ by [Your Name](https://github.com/Gouthammathi)  
+📧 goouthamm@gmail.com
