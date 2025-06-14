@@ -121,5 +121,5 @@ By default, frontend runs on `http://localhost:3000` and backend on `http://loca
 
 ## 📬 Contact
 
-Made with ❤️ by [Your Name](https://github.com/Gouthammathi)  
+Made with ❤️ by [Goutham Mathi](https://github.com/Gouthammathi)  
 📧 goouthamm@gmail.com
