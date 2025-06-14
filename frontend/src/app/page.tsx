@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react'
 import axios from 'axios'
-import { FiUpload, FiSend, FiSun, FiMoon } from 'react-icons/fi'
+import { FiUpload, FiSend, FiSun, FiMoon, FiDownload } from 'react-icons/fi'
 import { useDropzone } from 'react-dropzone'
+import toast, { Toaster } from 'react-hot-toast'
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null)
@@ -15,7 +16,6 @@ export default function Home() {
   const [dark, setDark] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // 🌙 Initialize dark mode from localStorage
   useEffect(() => {
     const storedTheme = localStorage.getItem('theme')
     if (storedTheme === 'dark') {
@@ -24,7 +24,6 @@ export default function Home() {
     }
   }, [])
 
-  // 🌙 Toggle dark mode and persist preference
   const toggleDarkMode = () => {
     const newTheme = !dark
     setDark(newTheme)
@@ -55,7 +54,6 @@ export default function Home() {
       const greeting = response.data?.message || '✅ Resume uploaded! Ask me anything about it.'
       setUploaded(true)
       setMessages([{ role: 'assistant', content: greeting }])
-
     } catch {
       setMessages([{ role: 'assistant', content: '❌ Upload failed. Please try again.' }])
     } finally {
@@ -113,21 +111,33 @@ export default function Home() {
     }
   }
 
+  const downloadChat = (messages: { role: 'user' | 'assistant', content: string }[]) => {
+    const content = messages.map(m => `${m.role === 'user' ? '🧑 You' : '🤖 Assistant'}:\n${m.content}\n\n`).join('')
+    const blob = new Blob([content], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'resume-chat-history.txt'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    toast.success('✅ Chat downloaded successfully!')
+  }
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-100 to-white dark:from-gray-900 dark:to-black px-4 py-8 md:px-8 text-gray-800 dark:text-gray-100 transition-colors">
+      <Toaster position="top-right" />
       <div className="max-w-4xl mx-auto relative">
         <h1 className="text-4xl font-bold text-center mb-10">Resume Chat Assistant</h1>
 
-        {/* 🌓 Dark mode toggle */}
-        {/* <button
+        <button
           className="absolute top-4 right-4 p-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100"
           onClick={toggleDarkMode}
           aria-label="Toggle dark mode"
         >
           {dark ? <FiSun className="text-xl" /> : <FiMoon className="text-xl" />}
-        </button> */}
+        </button>
 
-        {/* 📄 File upload */}
         {!uploaded && (
           <section className="mb-10">
             <div
@@ -154,15 +164,12 @@ export default function Home() {
           </section>
         )}
 
-        {/* 💬 Chat interface */}
         <section className="bg-white dark:bg-gray-800 shadow-2xl rounded-2xl p-6 h-[600px] flex flex-col border border-gray-100 dark:border-gray-700">
           <div className="flex-1 overflow-y-auto space-y-4 pr-2">
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`rounded-xl px-4 py-3 max-w-[80%] text-sm shadow ${
-                  msg.role === 'user'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100'
+                  msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100'
                 }`}>
                   {msg.content}
                 </div>
@@ -186,6 +193,14 @@ export default function Home() {
               className="bg-blue-600 text-white px-5 py-2 rounded-xl hover:bg-blue-700 disabled:opacity-50"
             >
               <FiSend className="text-xl" />
+            </button>
+            <button
+              type="button"
+              onClick={() => downloadChat(messages)}
+              disabled={messages.length === 0}
+              className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 disabled:opacity-50"
+            >
+              <FiDownload className="text-xl" />
             </button>
           </form>
         </section>
