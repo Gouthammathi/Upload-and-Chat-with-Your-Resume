@@ -1,38 +1,126 @@
 # 📄 Resume Chat Assistant
 
-Upload your résumé and chat with it using AI! Powered by LangChain, Chroma, and Mistral-7B-Instruct.
+An AI-powered résumé assistant that lets users upload a PDF resume, chat with it, and assess how well it matches a job description.
 
+![App Screenshot](https://via.placeholder.com/1200x600?text=Resume+Chat+App)
 
-## 🛠️ Tech Stack
+---
 
-- **Frontend**: Next.js 14 + Tailwind CSS
-- **Backend**: FastAPI + LangChain + Chroma
-- **LLM**: mistralai/Mistral-7B-Instruct via Together API
-- **Streaming**: SSE (Server-Sent Events)
+## 🚀 Features
 
-## ✨ Features
+- 📄 Upload your PDF résumé
+- 💬 Chat with your résumé using natural language
+- 📊 Role-fit score calculator (0–100%)
+- 🎯 Personalized greeting and information extraction (name, email, phone)
+- 🌗 Dark mode toggle
+- 🧠 Skill suggestions based on content
+- 📥 Download full Q&A chat history
+- ✅ Resume summarization (optional)
+- 🛡️ File type validation, streaming responses (SSE)
 
-- ✅ Upload and parse PDF résumé
-- ✅ Chat with streaming answers from your résumé
-- ✅ Personalized greeting (extracts name/email/phone)
-- ✅ Role-fit score calculator (enter job description)
-- ✅ Chat export (as .txt)
-- ✅ Dark mode toggle
-- ✅ Skill suggestions
-- ✅ Secure: file sanitization + PDF-only validation
+---
 
-## 🚀 Getting Started
+## 🧱 Architecture
 
-### 1. Clone and Install
+```
+📦 root/
+├── frontend/ (Next.js 14 + Tailwind CSS)
+│   └── app/page.tsx     ← main UI
+├── backend/ (FastAPI + LangChain)
+│   └── main.py          ← upload, chat, score endpoints
+├── chroma_store/        ← Vector DB for local embeddings
+├── .env                 ← API keys and config
+├── README.md
+```
+
+---
+
+## ⚙️ Tech Stack
+
+| Layer         | Stack                                 |
+|--------------|----------------------------------------|
+| Front-end     | Next.js 14, Tailwind CSS, React Icons |
+| Back-end      | FastAPI, LangChain, Chroma DB         |
+| LLM API       | Together API (Mistral-7B-Instruct)     |
+| Embeddings    | `intfloat/e5-small-v2` (Hugging Face) |
+| Streaming     | Server-Sent Events (SSE)              |
+
+---
+
+## 🧪 Setup Instructions
+
+### 1. Clone & Setup
 
 ```bash
-git clone https://github.com/yourusername/resume-chat-app
-cd resume-chat-app
+git clone https://github.com/your-username/resume-chat.git
+cd resume-chat
+```
+
+---
+
+### 2. Backend Setup
+
+```bash
 cd backend
+python -m venv venv
+source venv/bin/activate  # or venv\Scripts\activate on Windows
 pip install -r requirements.txt
-# Add Together API Key
-echo TOGETHER_API_KEY=your_key > .env
+```
+
+Create a `.env` file:
+
+```
+TOGETHER_API_KEY=your_api_key_here
+```
+
+Run the FastAPI server:
+
+```bash
 uvicorn main:app --reload
+```
+
+---
+
+### 3. Frontend Setup
+
+```bash
 cd frontend
 npm install
 npm run dev
+```
+
+By default, frontend runs on `http://localhost:3000` and backend on `http://localhost:8000`.
+
+---
+
+## 🎥 Walk-through
+
+> [📹 Loom Walkthrough](https://www.loom.com/) ← Replace with your recording
+
+---
+
+## 🔎 Known Trade-offs / Issues
+
+| Trade-off | Description |
+|----------|-------------|
+| ❗ Resource Usage | Mistral-7B-Instruct runs via Together API; local inference not ideal on <16GB RAM. |
+| 📄 Resume PDF | Extraction quality depends on document formatting (tabular or scanned PDFs may fail). |
+| 🎯 Role-fit Accuracy | Scoring is approximate and prompt-based, not learned classification. |
+| ⚠️ SSE Limit | Some browsers may mishandle large streamed payloads—tested in Chrome/Edge. |
+| 🌐 CORS | Ensure correct `localhost` port is whitelisted in FastAPI CORS config. |
+
+---
+
+## ✅ Future Enhancements
+
+- 🎙️ Voice-to-text queries
+- 📍 Named entity highlighting
+- 📂 Multiple resume uploads
+- 🧾 Export as formatted PDF summary
+
+---
+
+## 📬 Contact
+
+Made with ❤️ by [Your Name](https://github.com/yourusername)  
+📧 you@example.com
